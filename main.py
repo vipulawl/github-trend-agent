@@ -50,8 +50,8 @@ def main():
 
     languages_raw = os.getenv("LANGUAGES", "Python,JavaScript,TypeScript")
     languages = [l.strip() for l in languages_raw.split(",") if l.strip()] if languages_raw else []
-    min_score = int(os.getenv("HN_MIN_SCORE", "50"))
-    min_comments = int(os.getenv("ISSUE_MIN_COMMENTS", "5"))
+    min_score = int(os.getenv("HN_MIN_SCORE") or "50")
+    min_comments = int(os.getenv("ISSUE_MIN_COMMENTS") or "5")
 
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M')}] Starting GitHub trend agent")
     print(f"  Languages: {languages or 'all'} | HN min score: {min_score} | Issue min comments: {min_comments}")
