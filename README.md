@@ -1,13 +1,13 @@
 # GitHub Trend Agent
 
-Monitors GitHub trending repos, hot issues in those repos, and Hacker News discussions mentioning GitHub projects. Sends you an email digest whenever new high-traction items appear — so you can spot problems worth solving immediately.
+Monitors GitHub trending repos and Hacker News discussions mentioning GitHub projects. Sends you a daily HTML email digest with only recently-created repos and today's top HN stories.
 
 ## What it does
 
-- **GitHub Trending**: scrapes daily trending repos (filters by configured languages/topics)
-- **Hot Issues**: finds heavily-discussed open issues in those trending repos (signal for unsolved problems)
-- **Hacker News**: polls HN Algolia API for recent GitHub-related stories with high score
-- **Deduplication**: tracks seen items in `state.json` — only emails you about new things
+- **GitHub Trending**: scrapes daily trending repos, filters by configured languages, and drops repos older than `MAX_REPO_AGE_DAYS` (default 30) so you only see genuinely new projects
+- **Hacker News**: polls HN Algolia API for the past 24h of GitHub-related stories with high score
+- **Once-a-day gate**: tracks `last_sent_date` in `state.json` — only one email per calendar day regardless of how often the script runs
+- **Deduplication**: also tracks seen item IDs so items don't repeat across days
 - **Email**: sends a formatted HTML digest via Gmail SMTP
 
 ## Setup
@@ -32,7 +32,7 @@ cp .env.example .env
 | `GITHUB_TOKEN` | GitHub personal access token (optional but recommended — raises rate limit from 60 to 5000 req/hr) |
 | `LANGUAGES` | Comma-separated languages to filter trending repos (e.g. `Python,JavaScript`) — leave blank for all |
 | `HN_MIN_SCORE` | Minimum HN score to include a story (default: 50) |
-| `ISSUE_MIN_COMMENTS` | Min comments on a GitHub issue to include it (default: 5) |
+| `MAX_REPO_AGE_DAYS` | Drop repos created more than this many days ago (default: 30) |
 
 ### Gmail App Password
 
@@ -76,7 +76,7 @@ Under **Settings → Secrets and variables → Actions → Variables**:
 |---|---|
 | `LANGUAGES` | `Python,JavaScript,TypeScript` |
 | `HN_MIN_SCORE` | `50` |
-| `ISSUE_MIN_COMMENTS` | `5` |
+| `MAX_REPO_AGE_DAYS` | `30` |
 
 ### 3. Trigger manually to test
 
@@ -91,7 +91,7 @@ crontab -e
 Add this line (adjust path):
 
 ```
-0 */2 * * * /Users/vipulagarwal/github-trend-agent/.venv/bin/python /Users/vipulagarwal/github-trend-agent/main.py >> /Users/vipulagarwal/github-trend-agent/agent.log 2>&1
+0 8 * * * /Users/vipulagarwal/github-trend-agent/.venv/bin/python /Users/vipulagarwal/github-trend-agent/main.py >> /Users/vipulagarwal/github-trend-agent/agent.log 2>&1
 ```
 
 ## File structure
@@ -101,7 +101,7 @@ github-trend-agent/
 ├── .github/workflows/
 │   └── trend-monitor.yml  # runs every 3 hours on GitHub Actions
 ├── main.py                # entry point — orchestrates all monitors
-├── github_monitor.py      # trending repos + hot issues
+├── github_monitor.py      # trending repos + age filtering
 ├── hn_monitor.py          # Hacker News GitHub mentions
 ├── email_sender.py        # Gmail SMTP email formatting + sending
 ├── state.json             # committed by Actions bot — tracks seen items

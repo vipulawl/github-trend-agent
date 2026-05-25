@@ -4,7 +4,7 @@ import requests
 HN_API = "https://hn.algolia.com/api/v1/search"
 
 
-def get_hn_github_stories(min_score: int, lookback_hours: int = 3) -> list[dict]:
+def get_hn_github_stories(min_score: int, lookback_hours: int = 24) -> list[dict]:
     """Fetch recent HN stories that mention GitHub and meet the score threshold."""
     since_ts = int(time.time()) - (lookback_hours * 3600)
     results = []

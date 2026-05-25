@@ -20,25 +20,6 @@ def _repo_rows(repos: list[dict]) -> str:
     return rows
 
 
-def _issue_rows(issues: list[dict]) -> str:
-    rows = ""
-    for i in issues:
-        labels = ""
-        for lbl in i["labels"][:3]:
-            labels += f" <span style='background:#21262d;color:#8b949e;padding:1px 6px;border-radius:10px;font-size:11px'>{lbl}</span>"
-        rows += f"""
-        <tr>
-          <td style='padding:8px 0;border-bottom:1px solid #21262d'>
-            <a href='{i["url"]}' style='color:#58a6ff;font-weight:600;text-decoration:none'>{i["title"]}</a>{labels}<br>
-            <span style='color:#6e7681;font-size:12px'>
-              <a href='{i["repo_url"]}' style='color:#8b949e;text-decoration:none'>{i["repo"]}</a>
-              &nbsp;·&nbsp; {i["comments"]} comments
-            </span>
-          </td>
-        </tr>"""
-    return rows
-
-
 def _hn_rows(stories: list[dict]) -> str:
     rows = ""
     for s in stories:
@@ -62,18 +43,17 @@ def _section(title: str, icon: str, rows_html: str, count: int) -> str:
     return f"""
     <div style='margin-bottom:28px'>
       <h2 style='color:#e6edf3;font-size:16px;margin:0 0 12px 0;padding-bottom:8px;border-bottom:1px solid #30363d'>
-        {icon} {title} <span style='color:#6e7681;font-weight:normal;font-size:13px'>({count} new)</span>
+        {icon} {title} <span style='color:#6e7681;font-weight:normal;font-size:13px'>({count})</span>
       </h2>
       <table style='width:100%;border-collapse:collapse'>{rows_html}</table>
     </div>"""
 
 
-def build_html(new_repos: list, new_issues: list, new_stories: list, run_time: str) -> str:
-    total = len(new_repos) + len(new_issues) + len(new_stories)
+def build_html(new_repos: list, new_stories: list, run_time: str) -> str:
+    total = len(new_repos) + len(new_stories)
     body = (
         _section("Trending Repos", "🔥", _repo_rows(new_repos), len(new_repos)) +
-        _section("Hot Issues (problems to solve)", "🐛", _issue_rows(new_issues), len(new_issues)) +
-        _section("Hacker News Buzz", "📰", _hn_rows(new_stories), len(new_stories))
+        _section("Hacker News", "📰", _hn_rows(new_stories), len(new_stories))
     )
     return f"""
 <!DOCTYPE html>
@@ -82,25 +62,25 @@ def build_html(new_repos: list, new_issues: list, new_stories: list, run_time: s
   <div style='max-width:680px;margin:0 auto;padding:24px 16px'>
     <div style='margin-bottom:24px'>
       <h1 style='color:#e6edf3;font-size:20px;margin:0 0 4px 0'>GitHub Trend Alert</h1>
-      <p style='color:#6e7681;font-size:13px;margin:0'>{run_time} &nbsp;·&nbsp; {total} new items</p>
+      <p style='color:#6e7681;font-size:13px;margin:0'>{run_time} &nbsp;·&nbsp; {total} items</p>
     </div>
     {body}
-    <p style='color:#484f58;font-size:12px;margin-top:24px'>github-trend-agent — running every 2 hours</p>
+    <p style='color:#484f58;font-size:12px;margin-top:24px'>github-trend-agent — daily digest</p>
   </div>
 </body>
 </html>"""
 
 
-def send_email(new_repos: list, new_issues: list, new_stories: list) -> bool:
+def send_email(new_repos: list, new_stories: list) -> bool:
     gmail_user = os.environ["GMAIL_USER"]
     app_password = os.environ["GMAIL_APP_PASSWORD"]
     to_email = os.environ.get("TO_EMAIL", gmail_user)
 
-    run_time = datetime.now().strftime("%b %d, %Y at %H:%M")
-    total = len(new_repos) + len(new_issues) + len(new_stories)
-    subject = f"[Trend Alert] {total} new items — {run_time}"
+    run_time = datetime.now().strftime("%b %d, %Y")
+    total = len(new_repos) + len(new_stories)
+    subject = f"[Daily Digest] {total} items — {run_time}"
 
-    html = build_html(new_repos, new_issues, new_stories, run_time)
+    html = build_html(new_repos, new_stories, run_time)
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject

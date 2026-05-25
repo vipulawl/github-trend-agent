@@ -1,6 +1,7 @@
 import os
 import requests
 from bs4 import BeautifulSoup
+from datetime import datetime, timezone, timedelta
 
 GITHUB_API = "https://api.github.com"
 TRENDING_URL = "https://github.com/trending"
@@ -14,7 +15,38 @@ def _headers():
     return h
 
 
-def get_trending_repos(languages: list[str]) -> list[dict]:
+def _enrich_with_age(repos: list[dict], max_age_days: int) -> list[dict]:
+    """Fetch creation dates via API and drop repos older than max_age_days."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=max_age_days)
+    filtered = []
+    for repo in repos:
+        full_name = repo["full_name"]
+        try:
+            resp = requests.get(
+                f"{GITHUB_API}/repos/{full_name}",
+                headers=_headers(),
+                timeout=10,
+            )
+            if resp.status_code == 403:
+                print("  [github] rate limited — skipping age filter for remaining repos")
+                filtered.append(repo)
+                continue
+            if resp.status_code != 200:
+                filtered.append(repo)
+                continue
+            data = resp.json()
+            created_at = data.get("created_at", "")
+            if created_at:
+                created_dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                if created_dt < cutoff:
+                    continue
+            filtered.append(repo)
+        except requests.RequestException:
+            filtered.append(repo)
+    return filtered
+
+
+def get_trending_repos(languages: list[str], max_age_days: int = 0) -> list[dict]:
     """Scrape GitHub trending page. Returns list of repo dicts."""
     results = []
     langs_to_check = languages if languages else [None]
@@ -62,48 +94,10 @@ def get_trending_repos(languages: list[str]) -> list[dict]:
         if r["full_name"] not in seen:
             seen.add(r["full_name"])
             deduped.append(r)
+
+    if max_age_days > 0:
+        before = len(deduped)
+        deduped = _enrich_with_age(deduped, max_age_days)
+        print(f"  → {before - len(deduped)} repos filtered out (older than {max_age_days} days)")
+
     return deduped
-
-
-def get_hot_issues(repos: list[dict], min_comments: int) -> list[dict]:
-    """For each trending repo, fetch recently-active issues with many comments."""
-    hot = []
-    for repo in repos[:15]:  # cap to avoid rate limits
-        full_name = repo["full_name"]
-        try:
-            resp = requests.get(
-                f"{GITHUB_API}/repos/{full_name}/issues",
-                headers=_headers(),
-                params={
-                    "state": "open",
-                    "sort": "comments",
-                    "direction": "desc",
-                    "per_page": 5,
-                },
-                timeout=10,
-            )
-            if resp.status_code == 403:
-                print("  [github] rate limited on issues API")
-                break
-            if resp.status_code != 200:
-                continue
-            for issue in resp.json():
-                if issue.get("pull_request"):
-                    continue
-                if issue.get("comments", 0) < min_comments:
-                    continue
-                hot.append({
-                    "repo": full_name,
-                    "repo_url": repo["url"],
-                    "title": issue["title"],
-                    "url": issue["html_url"],
-                    "comments": issue["comments"],
-                    "created_at": issue["created_at"],
-                    "labels": [l["name"] for l in issue.get("labels", [])],
-                })
-        except requests.RequestException as e:
-            print(f"  [github] issues fetch failed for {full_name}: {e}")
-            continue
-
-    hot.sort(key=lambda x: x["comments"], reverse=True)
-    return hot[:20]

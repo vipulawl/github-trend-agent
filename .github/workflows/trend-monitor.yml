@@ -2,7 +2,7 @@ name: GitHub Trend Monitor
 
 on:
   schedule:
-    - cron: '0 */3 * * *'   # every 3 hours
+    - cron: '0 7 * * *'     # once daily at 09:00 Amsterdam (CEST/UTC+2); change to 0 8 in winter (CET/UTC+1)
   workflow_dispatch:          # manual trigger from Actions tab
 
 jobs:
@@ -31,7 +31,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
           LANGUAGES: ${{ vars.LANGUAGES }}
           HN_MIN_SCORE: ${{ vars.HN_MIN_SCORE }}
-          ISSUE_MIN_COMMENTS: ${{ vars.ISSUE_MIN_COMMENTS }}
+          MAX_REPO_AGE_DAYS: ${{ vars.MAX_REPO_AGE_DAYS }}
         run: python main.py
 
       - name: Persist state
