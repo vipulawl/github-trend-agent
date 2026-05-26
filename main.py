@@ -49,11 +49,10 @@ def main():
     languages_raw = os.getenv("LANGUAGES", "Python,JavaScript,TypeScript")
     languages = [l.strip() for l in languages_raw.split(",") if l.strip()] if languages_raw else []
     min_score = int(os.getenv("HN_MIN_SCORE") or "50")
-    max_age_days = int(os.getenv("MAX_REPO_AGE_DAYS") or "30")
 
     today = datetime.now().strftime("%Y-%m-%d")
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M')}] Starting GitHub trend agent")
-    print(f"  Languages: {languages or 'all'} | HN min score: {min_score} | Max repo age: {max_age_days} days")
+    print(f"  Languages: {languages or 'all'} | HN min score: {min_score}")
 
     state = load_state()
 
@@ -62,8 +61,8 @@ def main():
         return
 
     print("  Fetching GitHub trending repos...")
-    all_repos = get_trending_repos(languages, max_age_days=max_age_days)
-    print(f"  → {len(all_repos)} repos after age filter")
+    all_repos = get_trending_repos(languages)
+    print(f"  → {len(all_repos)} repos fetched")
 
     print("  Fetching HN stories...")
     all_stories = get_hn_github_stories(min_score)

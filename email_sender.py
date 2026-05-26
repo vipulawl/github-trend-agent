@@ -5,16 +5,29 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 
+def _fmt_created(iso: str) -> str:
+    if not iso:
+        return ""
+    try:
+        dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+        return dt.strftime("%b %Y")
+    except ValueError:
+        return ""
+
+
 def _repo_rows(repos: list[dict]) -> str:
     rows = ""
     for r in repos:
-        lang = f" <span style='color:#6e7681'>({r['language']})</span>" if r["language"] else ""
-        today = f" <span style='color:#2da44e'>+{r['stars_today']}</span>" if r["stars_today"] else ""
+        lang = f"({r['language']})" if r["language"] else ""
+        created = _fmt_created(r.get("created_at", ""))
+        meta_parts = [p for p in [lang, f"created {created}" if created else ""] if p]
+        meta = f" <span style='color:#6e7681;font-size:12px'>{' · '.join(meta_parts)}</span>" if meta_parts else ""
+        today = f" <span style='color:#2da44e;font-weight:600'>+{r['stars_today']}</span>" if r["stars_today"] else ""
         desc = f"<br><span style='color:#6e7681;font-size:13px'>{r['description']}</span>" if r["description"] else ""
         rows += f"""
         <tr>
           <td style='padding:8px 0;border-bottom:1px solid #21262d'>
-            <a href='{r["url"]}' style='color:#58a6ff;font-weight:600;text-decoration:none'>{r['full_name']}</a>{lang}{today}{desc}
+            <a href='{r["url"]}' style='color:#58a6ff;font-weight:600;text-decoration:none'>{r['full_name']}</a>{meta}{today}{desc}
           </td>
         </tr>"""
     return rows
